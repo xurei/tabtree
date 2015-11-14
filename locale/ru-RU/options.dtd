@@ -13,6 +13,8 @@
 <!ENTITY delay.desc "Задержка перед тем как выделенная вкладка активируется. Если вы не хотите видеть вкладку перед её закрытием, то установите это значение в 160 или больше (0 by default)">
 <!ENTITY position.left "Слева">
 <!ENTITY position.right "Справа">
+<!ENTITY position.sidebar_top "Sidebar (top)">
+<!ENTITY position.sidebar_bottom "Sidebar (bottom)">
 <!ENTITY position.title "Расположение:">
 <!ENTITY position.desc "(&quot;Слева&quot; по умолчанию)">
 <!ENTITY search-position.title "Расположение строки поиска вкладки:">
@@ -22,14 +24,6 @@
 <!ENTITY search-position.bottom-after "Снизу (после кнопки открытия новой вкладки)">
 <!ENTITY search-autohide.title "Скрывать строку поиска вкладки:">
 <!ENTITY search-autohide.desc "Ctrl+Shift+Alt+F показывает её (не отмечено по умолчанию)">
-<!ENTITY navbar-style.title "Размер адресной строки:">
-<!ENTITY navbar-style.desc "Опция &quot;По умолчанию&quot; позволяет использовать сторонние стили (&quot;Самый маленький&quot; по умолчанию)">
-<!ENTITY navbar-style.0 "По умолчанию">
-<!ENTITY navbar-style.1 "Самый маленький">
-<!ENTITY navbar-style.2 "Маленький">
-<!ENTITY navbar-style.3 "Средний">
-<!ENTITY navbar-style.4 "Большой">
-<!ENTITY navbar-style.5 "Самый большой">
 <!ENTITY drawInTitlebar.title "Скрывать строку заголовка окна при развёрнутом Firefox:">
 <!ENTITY drawInTitlebar.desc "Эта опция всего лишь переключает &quot;browser.tabs.drawInTitlebar&quot; в about:config (отмечено по умолчанию)">
 <!ENTITY flst.title "Переходить на последнюю выделенную вкладку после закрытия текущей вкладки (FLST):">

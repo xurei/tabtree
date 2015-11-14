@@ -13,6 +13,8 @@
 <!ENTITY delay.desc "Actually it is a delay until a selected tab is displayed. Set it to around 160 if you don't want to see a tab flipping while closing a tab (0 by default)">
 <!ENTITY position.left "Left">
 <!ENTITY position.right "Right">
+<!ENTITY position.sidebar_top "In the sidebar (at the top)">
+<!ENTITY position.sidebar_bottom "In the sidebar (at the bottom)">
 <!ENTITY position.title "Position:">
 <!ENTITY position.desc "(&quot;Left&quot; by default)">
 <!ENTITY search-position.title "Tab search bar position:">
@@ -22,14 +24,6 @@
 <!ENTITY search-position.bottom-after "Bottom (after the &quot;New tab&quot; button)">
 <!ENTITY search-autohide.title "Autohide tab search bar:">
 <!ENTITY search-autohide.desc "Ctrl+Shift+Alt+F brings it up (unchecked by default)">
-<!ENTITY navbar-style.title "Address bar size:">
-<!ENTITY navbar-style.desc "Select &quot;Use default&quot; to use any third-party styles (&quot;The smallest&quot; by default)">
-<!ENTITY navbar-style.0 "Use default">
-<!ENTITY navbar-style.1 "The smallest">
-<!ENTITY navbar-style.2 "Small">
-<!ENTITY navbar-style.3 "Medium">
-<!ENTITY navbar-style.4 "Big">
-<!ENTITY navbar-style.5 "The biggest">
 <!ENTITY drawInTitlebar.title "Hide the OS native titlebar when Firefox is maximized:">
 <!ENTITY drawInTitlebar.desc "It's &quot;browser.tabs.drawInTitlebar&quot; in about:config (checked by default)">
 <!ENTITY flst.title "FLST after closing a current tab:">

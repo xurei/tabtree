@@ -22,6 +22,11 @@ const sss = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsISt
 var stringBundle = Services.strings.createBundle('chrome://tabtree/locale/global.properties?' + Math.random()); // Randomize URI to work around bug 719376
 var prefsObserver;
 
+const TT_POS_LEFT = 0;
+const TT_POS_RIGHT = 1;
+const TT_POS_SB_TOP = 2;
+const TT_POS_SB_BOT = 3;
+
 //noinspection JSUnusedGlobalSymbols
 function startup(data, reason)
 {
@@ -86,8 +91,6 @@ function startup(data, reason)
 	Services.prefs.getDefaultBranch(null).setIntPref('extensions.tabtree.search-position', 0);
 	Services.prefs.getDefaultBranch(null).setBoolPref('extensions.tabtree.search-autohide', false); // setting default pref
 	Services.prefs.getDefaultBranch(null).setBoolPref('extensions.tabtree.show-default-tabs', false); // hidden pref for test purposes
-	// 0 - None, 1 - The Smallest, 2 - Small, 3 - Medium, 4 - Big (round), 5 - The Biggest (round):
-	Services.prefs.getDefaultBranch(null).setIntPref('extensions.tabtree.navbar-style', Services.appinfo.OS=='Darwin' ? 0 : 1); // until Mac support is done
 	Services.prefs.getDefaultBranch(null).setBoolPref('extensions.tabtree.flst', true); // focus last selected tab after closing a current tab
 	Services.prefs.getDefaultBranch(null).setBoolPref('extensions.tabtree.highlight-unread-tabs', false);
 	Services.prefs.getDefaultBranch(null).setBoolPref('extensions.tabtree.new-tab-button', true);
@@ -103,72 +106,44 @@ function startup(data, reason)
 	
 	// migration code :
 	try {
-		Services.prefs.setBoolPref('extensions.tabtree.treelines', Services.prefs.getBoolPref('extensions.tabstree.treelines'));
-		Services.prefs.setIntPref('extensions.tabtree.highlight-unloaded-tabs', Services.prefs.getIntPref('extensions.tabstree.highlight-unloaded-tabs'));
-		Services.prefs.setBoolPref('extensions.tabtree.dblclick', Services.prefs.getBoolPref('extensions.tabstree.dblclick'));
-		Services.prefs.setIntPref('extensions.tabtree.delay', Services.prefs.getIntPref('extensions.tabstree.delay'));
-		Services.prefs.setIntPref('extensions.tabtree.position', Services.prefs.getIntPref('extensions.tabstree.position'));
-		Services.prefs.deleteBranch('extensions.tabstree.');
+		// 0 - None, 1 - The Smallest, 2 - Small, 3 - Medium, 4 - Big (round), 5 - The Biggest (round):
+		switch (Services.prefs.getIntPref('extensions.tabtree.navbar-style')) {
+		case 0:
+			Services.prefs.setIntPref('extensions.navbarheight.height', -1);
+			break;
+		case 1:
+			Services.prefs.setIntPref('extensions.navbarheight.height', 24);
+			break;
+		case 2:
+			Services.prefs.setIntPref('extensions.navbarheight.height', 26);
+			break;
+		case 3:
+			Services.prefs.setIntPref('extensions.navbarheight.height', 30);
+			break;
+		case 4:
+			Services.prefs.setIntPref('extensions.navbarheight.height', 32);
+			break;
+		case 5:
+			Services.prefs.setIntPref('extensions.navbarheight.height', 34);
+			break;
+		default:
+			Services.prefs.setIntPref('extensions.navbarheight.height', 28);
+		}
+		Services.prefs.deleteBranch('extensions.tabtree.navbar-style');
 	} catch (e) {
 	}
-	// - end migration code // don't forget to delete when v1.1.0 isn't in use anymore
+	// - end migration code // don't forget to delete when v1.3.6 isn't in use anymore
 
 	let uriTabsToolbar = Services.io.newURI("chrome://tabtree/skin/tt-TabsToolbar.css", null, null);
 	if (!Services.prefs.getBoolPref('extensions.tabtree.show-default-tabs')) {
 		sss.loadAndRegisterSheet(uriTabsToolbar, sss.AUTHOR_SHEET);
 	}
-	let uriNav1Css = Services.io.newURI("chrome://tabtree/skin/tt-navbar-1.css", null, null);
-	let uriNav2Css = Services.io.newURI("chrome://tabtree/skin/tt-navbar-2.css", null, null);
-	let uriNav3Css = Services.io.newURI("chrome://tabtree/skin/tt-navbar-3.css", null, null);
-	let uriNav4Css = Services.io.newURI("chrome://tabtree/skin/tt-navbar-4.css", null, null);
-	let uriNav5Css = Services.io.newURI("chrome://tabtree/skin/tt-navbar-5.css", null, null);
-	switch (Services.prefs.getIntPref('extensions.tabtree.navbar-style')) {
-		case 1: // load The Thinnest (square) style
-			sss.loadAndRegisterSheet(uriNav1Css, sss.AUTHOR_SHEET);
-			break;
-		case 2: // load Thin (square) style
-			sss.loadAndRegisterSheet(uriNav2Css, sss.AUTHOR_SHEET);
-			break;
-		case 3: // load Medium (square) style
-			sss.loadAndRegisterSheet(uriNav3Css, sss.AUTHOR_SHEET);
-			break;
-		case 4: // load Big (round) style
-			sss.loadAndRegisterSheet(uriNav4Css, sss.AUTHOR_SHEET);
-			break;
-		case 5: // load The Biggest (round) style
-			sss.loadAndRegisterSheet(uriNav5Css, sss.AUTHOR_SHEET);
-			break;
-	}
+
 	//noinspection JSUnusedGlobalSymbols
 	Services.prefs.addObserver('extensions.tabtree.', (prefsObserver = {
 		observe: function(subject, topic, data) {
 			if (topic == 'nsPref:changed') {
 				switch (data) {
-					case 'extensions.tabtree.navbar-style':
-						// unload all styles for a start:
-						if (sss.sheetRegistered(uriNav1Css, sss.AUTHOR_SHEET)) sss.unregisterSheet(uriNav1Css, sss.AUTHOR_SHEET);
-						if (sss.sheetRegistered(uriNav2Css, sss.AUTHOR_SHEET)) sss.unregisterSheet(uriNav2Css, sss.AUTHOR_SHEET);
-						if (sss.sheetRegistered(uriNav3Css, sss.AUTHOR_SHEET)) sss.unregisterSheet(uriNav3Css, sss.AUTHOR_SHEET);
-						if (sss.sheetRegistered(uriNav4Css, sss.AUTHOR_SHEET)) sss.unregisterSheet(uriNav4Css, sss.AUTHOR_SHEET);
-						if (sss.sheetRegistered(uriNav5Css, sss.AUTHOR_SHEET)) sss.unregisterSheet(uriNav5Css, sss.AUTHOR_SHEET);
-						switch (Services.prefs.getIntPref('extensions.tabtree.navbar-style')) {
-							case 1: // load The Thinnest (square) style
-								sss.loadAndRegisterSheet(uriNav1Css, sss.AUTHOR_SHEET);
-								break;
-							case 2: // load Thin (square) style
-								sss.loadAndRegisterSheet(uriNav2Css, sss.AUTHOR_SHEET);
-								break;
-							case 3: // load Medium (square) style
-								sss.loadAndRegisterSheet(uriNav3Css, sss.AUTHOR_SHEET);
-								break;
-							case 4: // load Big (round) style
-								sss.loadAndRegisterSheet(uriNav4Css, sss.AUTHOR_SHEET);
-								break;
-							case 5: // load The Biggest (round) style
-								sss.loadAndRegisterSheet(uriNav5Css, sss.AUTHOR_SHEET);
-								break;
-						}
-						break;
 					case 'extensions.tabtree.show-default-tabs':
 						if (Services.prefs.getBoolPref('extensions.tabtree.show-default-tabs')) {
 							sss.unregisterSheet(uriTabsToolbar, sss.AUTHOR_SHEET);
@@ -181,13 +156,18 @@ function startup(data, reason)
 		}
 	}), false); // don't forget to remove // there must be only one pref observer for all Firefox windows for sss prefs
 
+	Cu.import(data.resourceURI.spec + "modules/NavBarHeight/NavBarHeight.jsm");
+	NavBarHeight.data = data;
+	NavBarHeight.packageName = "tabtree";
+	NavBarHeight.init();
+	
 	windowListener.register();
 }
 
 //noinspection JSUnusedGlobalSymbols
-function shutdown(aData, aReason)
+function shutdown(data, reason)
 {
-	if (aReason == APP_SHUTDOWN) return;
+	if (reason == APP_SHUTDOWN) return;
 
 	[
 		"chrome://tabtree/skin/tt-tree.css",
@@ -195,11 +175,6 @@ function shutdown(aData, aReason)
 		"chrome://tabtree/skin/tt-navbar-private.css",
 		"chrome://tabtree/skin/tt-options.css",
 		"chrome://tabtree/skin/tt-TabsToolbar.css",
-		"chrome://tabtree/skin/tt-navbar-1.css",
-		"chrome://tabtree/skin/tt-navbar-2.css",
-		"chrome://tabtree/skin/tt-navbar-3.css",
-		"chrome://tabtree/skin/tt-navbar-4.css",
-		"chrome://tabtree/skin/tt-navbar-5.css",
 	].forEach(function(x) {
 		let uri = Services.io.newURI(x, null, null);
 		if (sss.sheetRegistered(uri, sss.AUTHOR_SHEET)) {
@@ -226,6 +201,9 @@ function shutdown(aData, aReason)
 		});
 		ss.deleteGlobalValue('tt-saved-widgets');
 	}
+	
+	NavBarHeight.uninit();
+	Cu.unload(data.resourceURI.spec + "modules/NavBarHeight/NavBarHeight.jsm");
 	
 	windowListener.unregister();
 }
@@ -262,6 +240,7 @@ var windowListener = {
 		}
 		let sidebar = aDOMWindow.document.querySelector('#tt-sidebar');
 		ss.setWindowValue(aDOMWindow, 'tt-width', sidebar.width); // Remember the width of 'tt-sidebar'
+		ss.setWindowValue(aDOMWindow, 'tt-height', sidebar.height); // Remember the height of 'tt-sidebar'
 		// Remember the first visible row of the <tree id="tt">:
 		ss.setWindowValue(aDOMWindow, 'tt-first-visible-row', aDOMWindow.document.querySelector('#tt').treeBoxObject.getFirstVisibleRow().toString());
 		Services.prefs.removeObserver('extensions.tabtree.', aDOMWindow.tt.toRemove.prefsObserver); // it can also be removed in 'unloadFromWindow'
@@ -305,6 +284,7 @@ var windowListener = {
 		if (splitter) {
 			let sidebar = aDOMWindow.document.querySelector('#tt-sidebar');
 			ss.deleteWindowValue(aDOMWindow, 'tt-width', sidebar.width); // Restore the width of 'tt-sidebar' to 200px
+			ss.deleteWindowValue(aDOMWindow, 'tt-height', sidebar.height); // Restore the height of 'tt-sidebar' to 400px
 			splitter.parentNode.removeChild(splitter);
 			sidebar.parentNode.removeChild(sidebar);
 			let fullscrToggler = aDOMWindow.document.querySelector('#tt-fullscr-toggler');
@@ -368,6 +348,9 @@ var windowListener = {
 		}
 		let g = aDOMWindow.gBrowser;
 		let appcontent = aDOMWindow.document.querySelector('#appcontent');
+		let sidebar_browser = aDOMWindow.document.querySelector('#sidebar');
+		let sidebar_box = aDOMWindow.document.querySelector('#sidebar-box');
+		let sidebar_header = aDOMWindow.document.querySelector('#sidebar-header');
 		aDOMWindow.tt = {
 			toRemove: {eventListeners: {}, prefsObserver: null, tabsProgressListener: null, _menuObserver: null, sidebarWidthObserver: null},
 			toRestore: {g: {}, TabContextMenu: {}, tabsintitlebar: true}
@@ -541,6 +524,22 @@ var windowListener = {
 		//    <toolbox></toolbox>
 		//    <tree id="tt" flex="1" seltype="single" context="tabContextMenu" treelines="true" hidecolumnpicker="true"></tree>
 		//  </vbox>
+
+		//  for "sidebar top" position:
+		//  <vbox id="sidebar-box">
+		//    <vbox id="tt-sidebar"></vbox>
+		//    <splitter id="tt-splitter" />
+		//    <sidebarheader id="sidebar-header"></sidebarheader>
+		//    ...
+		//  </vbox>
+
+		//  for "sidebar bottom" position:
+		//  <vbox id="sidebar-box">
+		//     ...
+		//     <browser id="sidebar"></browser>
+		//     <splitter id="tt-splitter" />
+		//     <vbox id="tt-sidebar"></vbox>
+		//  </vbox>
 		
 		////////////////////////////////////////// VBOX tt-fullscr-toggler /////////////////////////////////////////////
 		// <vbox id="tt-fullscr-toggler"></vbox> // I am just copying what firefox does for its 'fullscr-toggler'
@@ -553,7 +552,8 @@ var windowListener = {
 		let sidebar = aDOMWindow.document.createElement('vbox');
 		propsToSet = {
 			id: 'tt-sidebar',
-			width: ss.getWindowValue(aDOMWindow, 'tt-width') || ss.getGlobalValue('tt-new-sidebar-width') || '200'
+			width: ss.getWindowValue(aDOMWindow, 'tt-width') || ss.getGlobalValue('tt-new-sidebar-width') || '200',
+			height: ss.getWindowValue(aDOMWindow, 'tt-height') || ss.getGlobalValue('tt-new-sidebar-height') || '400'
 			//persist: 'width' // It seems 'persist' attr doesn't work in bootstrap addons, I'll use SS instead
 		};
 		Object.keys(propsToSet).forEach( (p)=>{sidebar.setAttribute(p, propsToSet[p])} );
@@ -570,16 +570,40 @@ var windowListener = {
 		Object.keys(propsToSet).forEach( (p)=>{splitter.setAttribute(p, propsToSet[p]);} );
 		// added later
 		//////////////////// END SPLITTER ///////////////////////////////////////////////////////////////////////
+
+		let setTTPos = function (aPos) {
+			splitter.removeAttribute("resizeafter");
+			switch (aPos) {
+				case TT_POS_SB_TOP:
+					sidebar_box.insertBefore(splitter, sidebar_header);
+					sidebar_box.insertBefore(sidebar, splitter);
+					sidebar_box.insertBefore(fullscrToggler, sidebar);
+					splitter.setAttribute("resizeafter", "farthest");
+					splitter.setAttribute("orient", "vertical");
+					break;
+				case TT_POS_SB_BOT:
+					sidebar_box.appendChild(splitter);
+					sidebar_box.appendChild(sidebar);
+					sidebar_box.appendChild(fullscrToggler);
+					splitter.setAttribute("orient", "vertical");
+					break;
+				case TT_POS_RIGHT:
+					browser.appendChild(fullscrToggler);
+					browser.appendChild(splitter);
+					browser.appendChild(sidebar);
+					splitter.setAttribute("orient", "horizontal");
+					break;
+				case TT_POS_LEFT:
+				default:
+					browser.insertBefore(fullscrToggler, appcontent);
+					browser.insertBefore(sidebar, appcontent);
+					browser.insertBefore(splitter, appcontent);
+					splitter.setAttribute("orient", "horizontal");
+					break;
+			}
+		};
+		setTTPos(Services.prefs.getIntPref('extensions.tabtree.position'));
 		
-		if (Services.prefs.getIntPref('extensions.tabtree.position') == 1) {
-			browser.appendChild(fullscrToggler);
-			browser.appendChild(splitter);
-			browser.appendChild(sidebar);
-		} else {
-			browser.insertBefore(fullscrToggler, appcontent);
-			browser.insertBefore(sidebar, appcontent);
-			browser.insertBefore(splitter, appcontent);
-		}
 
 		//////////////////// DROP INDICATOR ////////////////////////////////////////////////////////////////////////
 		let ind = aDOMWindow.document.getAnonymousElementByAttribute(aDOMWindow.gBrowser.tabContainer, 'anonid', 'tab-drop-indicator').cloneNode(true);
@@ -765,6 +789,10 @@ var windowListener = {
 			appcontent.addEventListener('mouseup', aDOMWindow.tt.toRemove.eventListeners.onAppcontentMouseUp, false); // don't forget to remove
 		}
 		//////////////////// END KEY ///////////////////////////////////////////////////////////////////////////////////
+		
+		////////////////////////// NEXT ///////////////////////////////////////////////////////////////
+				
+		////////////////////// END NEXT ///////////////////////////////////////////////////////////////
 
 //////////////////////////////// here we could load something before all tabs have been loaded and restored by SS ////////////////////////////////
 
@@ -873,7 +901,7 @@ var windowListener = {
 						g.moveTabTo(aTab, tPosTo);
 					}
 				}
-			}, // moveTabToPlus: function(aTab, tPosTo, mode) {
+			}, // moveTabToPlus: function(aTab, tPosTo, mode)
 
 			moveBranchToPlus: function(aTab, tPosTo, mode) {
 				let tPos = aTab._tPos;
@@ -960,7 +988,7 @@ var windowListener = {
 						g.moveTabTo(g.tabs[lastDescendantPos], tPosTo+1);
 					}
 				}
-			}, // moveBranchToPlus: function(aTab, tPosTo, mode) {
+			}, // moveBranchToPlus: function(aTab, tPosTo, mode)
 
 			lastDescendantPos: function(aTabOrPos) {
 				let ret;
@@ -1030,7 +1058,7 @@ var windowListener = {
 					}
 				}
 				g.mCurrentTab.pinned ? tree.view.selection.clearSelection() : tree.view.selection.select(g.mCurrentTab._tPos - tt.nPinned); // NEW
-			}, // redrawToolbarbuttons: function() {
+			}, // redrawToolbarbuttons: function()
 			
 			quickSearch: function(aText, tPos) {
 				// I assume that this method is never invoked with aText=''
@@ -1055,7 +1083,7 @@ var windowListener = {
 					aDOMWindow.document.documentElement.style.paddingLeft = '';
 				}, 500);
 			}
-		}; // let tt = {
+		}; // let tt =
 
 		treechildren.addEventListener('dragstart', function(event) { // if the event was attached to 'tree' then the popup would be shown while you scrolling
 			let tab = g.tabs[tree.currentIndex+tt.nPinned];
@@ -1148,7 +1176,7 @@ var windowListener = {
 			// uncomment if you always want to highlight 'gBrowser.mCurrentTab':
 			//g.mCurrentTab.pinned ? tree.view.selection.clearSelection() : tree.view.selection.select(g.mCurrentTab._tPos - tt.nPinned); // NEW
 			event.stopPropagation();
-		}, false); // tree.addEventListener('dragstart', function(event) {
+		}, false); // tree.addEventListener('dragstart', function(event)
 		
 		tree.addEventListener('dragend', function(event) {
 			if (event.dataTransfer.dropEffect == 'none') { // the drag was cancelled
@@ -1187,22 +1215,17 @@ var windowListener = {
 						} else {
 							let lvl = parseInt(ss.getTabValue(oldTab, 'ttLevel')) + 1;
 							let maxLvl = Services.prefs.getIntPref('extensions.tabtree.max-indent');
+							let insertRelatedAfterCurrent = Services.prefs.getBoolPref('browser.tabs.insertRelatedAfterCurrent');
 							let i;
-							if (maxLvl === -1 || lvl <= maxLvl) {
-								ss.setTabValue(tab, 'ttLevel', lvl.toString());
-								for (i = oldTab._tPos + 1; i < g.tabs.length - 1; ++i) { // the last is our new tab
-									if (parseInt(ss.getTabValue(g.tabs[i], 'ttLevel')) < lvl) {
-										g.moveTabTo(tab, i);
-										break;
-									}
-								}
-							} else {
-								ss.setTabValue(tab, 'ttLevel', maxLvl.toString());
-								for (i = oldTab._tPos + 1; i < g.tabs.length - 1; ++i) { // the last is our new tab
-									if (parseInt(ss.getTabValue(g.tabs[i], 'ttLevel')) < maxLvl) {
-										g.moveTabTo(tab, i);
-										break;
-									}
+							if (maxLvl !== -1 && lvl > maxLvl) {
+								lvl = maxLvl;
+							}
+							ss.setTabValue(tab, 'ttLevel', lvl.toString());
+
+							for (i = oldTab._tPos + 1; i < g.tabs.length - 1; ++i) { // the last is our new tab
+								if (insertRelatedAfterCurrent || parseInt(ss.getTabValue(g.tabs[i], 'ttLevel')) < lvl) {
+									g.moveTabTo(tab, i);
+									break;
 								}
 							}
 
@@ -1240,7 +1263,7 @@ var windowListener = {
 								tree.treeBoxObject.rowCountChanged(tab._tPos - tt.nPinned, 1);
 								// refresh the twisty (commented out while the twisty is disabled):
 								//let pTab = tt.parentTab(tab);
-								//if (pTab) {
+								//if (pTab)
 								//	tree.treeBoxObject.invalidateRow(pTab._tPos - tt.nPinned);
 								//}
 
@@ -1502,7 +1525,7 @@ var windowListener = {
 				}
 				g.mCurrentTab.pinned ? tree.view.selection.clearSelection() : tree.view.selection.select(g.mCurrentTab._tPos - tt.nPinned); // NEW
 			} // drop(row, orientation, dataTransfer)
-		}; // let view = {
+		}; // let view =
 		tree.view = view;
 
 		aDOMWindow.tt.toRestore.g.pinTab = g.pinTab;
@@ -1997,15 +2020,7 @@ var windowListener = {
 							break;
 						case 'extensions.tabtree.position':
 							let firstVisibleRow = tree.treeBoxObject.getFirstVisibleRow();
-							if (Services.prefs.getIntPref('extensions.tabtree.position') === 1) {
-								browser.appendChild(fullscrToggler);
-								browser.appendChild(splitter);
-								browser.appendChild(sidebar);
-							} else {
-								browser.insertBefore(fullscrToggler, appcontent);
-								browser.insertBefore(sidebar, appcontent);
-								browser.insertBefore(splitter, appcontent);
-							}
+							setTTPos(Services.prefs.getIntPref('extensions.tabtree.position'));
 							tree.view = view;
 							tree.treeBoxObject.scrollToRow(firstVisibleRow);
 							tt.redrawToolbarbuttons();
@@ -2107,6 +2122,11 @@ var windowListener = {
 					ss.setGlobalValue('tt-new-sidebar-width', sidebar.width);
 					return;
 				}
+				if (mutation.attributeName == 'height') {
+					ss.setWindowValue(aDOMWindow, 'tt-height', sidebar.height); // Remember the height of 'tt-sidebar'
+					ss.setGlobalValue('tt-new-sidebar-height', sidebar.height);
+					return;
+				}
 			}
 		})).observe(sidebar, {attributes: true}); // removed in unloadFromWindow()
 
@@ -2157,5 +2177,5 @@ var windowListener = {
 		//aDOMWindow.tt.sidebar = sidebar; // uncomment while debugging
 		//aDOMWindow.tt.customizer = aDOMWindow.document.getElementById("customization-container"); // uncomment while debugging
 		
-	} // loadIntoWindow: function(aDOMWindow) {
-}; // var windowListener = {
+	} // loadIntoWindow: function(aDOMWindow)
+}; // var windowListener =
