@@ -12,6 +12,7 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 
+
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/CustomizableUI.jsm");
 var ssHack = Cu.import("resource:///modules/sessionstore/SessionStore.jsm");
