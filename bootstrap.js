@@ -12,7 +12,6 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 
-
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/CustomizableUI.jsm");
 var ssHack = Cu.import("resource:///modules/sessionstore/SessionStore.jsm");
@@ -611,9 +610,6 @@ var windowListener = {
 		ind.id = 'tt-drop-indicator';
 		ind.collapsed = true;
 		ind.style.marginTop = '-8px'; // needed for flipped arrow
-		let hboxForDropIndicator = aDOMWindow.document.createElement('hbox');
-		hboxForDropIndicator.align = 'start'; // just copying what mozilla does, but 'start' instead of 'end'
-		hboxForDropIndicator.appendChild(ind);
 		//////////////////// END DROP INDICATOR /////////////////////////////////////////////////////////////////
 		
 		//////////////////// TOOLBOX /////////////////////////////////////////////////////////////////
@@ -633,11 +629,9 @@ var windowListener = {
 		*/
 		let toolbox = aDOMWindow.document.createElement('toolbox');
 		toolbox.id = 'tt-toolbox';
-		let toolbar = aDOMWindow.document.createElement('toolbar');
-		toolbar.id = 'tt-toolbar';
-		toolbar.setAttribute('fullscreentoolbar', 'true');
-		toolbar.appendChild(hboxForDropIndicator);
-		toolbox.appendChild(toolbar);
+		//toolbars.id = 'tt-toolbar';
+		//toolbars.setAttribute('fullscreentoolbar', 'true');
+//		toolbox.appendChild(toolbars);
 		sidebar.appendChild(toolbox);
 		//////////////////// END TOOLBOX /////////////////////////////////////////////////////////////////
 
@@ -1019,27 +1013,70 @@ var windowListener = {
 				this.redrawToolbarbuttons();
 			},
 			
-			redrawToolbarbuttons: function() { // It's better to redraw all toolbarbuttons every time then add one toolbarbutton at a time. There were bugs when dragging and dropping them very fast
-				// reusing existing toolbarbuttons
-				let n = toolbar.childNodes.length - 1; // -1 for the arrow hbox
-				let max = Math.max(this.nPinned, n);
-				let min = Math.min(this.nPinned, n);
-				for (let i=0; i<max; ++i) {
-					let toolbarbtn;
-					if (i<min) { // reusing existing toolbarbuttons here
-						toolbarbtn = toolbar.childNodes[i+1]; // +1 for the arrow hbox
-					} else if (this.nPinned > n) { // we added a new pinned tab(tabs)
-						toolbarbtn = aDOMWindow.document.createElement('toolbarbutton');
-						toolbar.appendChild(toolbarbtn);
-					} else if (this.nPinned < n) { // we removed a pinned tab(tabs)
-						toolbarbtn = toolbar.childNodes[i+1]; // +1 for the arrow hbox
-						toolbar.removeChild(toolbarbtn);
-						continue;
+			redrawToolbarbuttons: function() {
+				// It's better to redraw all toolbarbuttons every time than add one toolbarbutton at a time.
+				// There were bugs when dragging and dropping them very fast reusing existing toolbarbuttons
+				var tic = new Date().getTime();
+				console.log("redraw");
+
+				let toolbarW = sidebar.clientWidth || 160;
+				let nbtns = Math.floor((toolbarW-8) / 26);
+				let ntoolbars = Math.ceil(this.nPinned / nbtns);
+				/*console.log(toolbarW +" toolbarW");
+				console.log(nbtns +" buttons/toolbar");
+				console.log(ntoolbars +" toolbars");
+				console.log(this.nPinned +" nPinned");*/
+
+				//Adds new toolbars if needed
+				while (toolbox.childNodes.length < ntoolbars)
+				{
+					let toolbar = aDOMWindow.document.createElement('toolbar');
+					toolbar.setAttribute('fullscreentoolbar', 'true');
+
+					toolbox.appendChild(toolbar);
+
+					/*let hboxForDropIndicator = aDOMWindow.document.createElement('hbox');
+					hboxForDropIndicator.align = 'start'; // just copying what mozilla does, but 'start' instead of 'end'
+					hboxForDropIndicator.appendChild(ind);
+					toolbar.appendChild(hboxForDropIndicator);*/
+				}
+				//Removes toolbars if not needed anymore
+				while (toolbox.childNodes.length > ntoolbars)
+				{
+					toolbox.removeChild(toolbox.childNodes[ntoolbars]);
+				}
+
+				//Removing useless buttons
+				for (let i=0; i<toolbox.childNodes.length; ++i)
+				{
+					let toolbar = toolbox.childNodes[i];
+
+					while (toolbar.childNodes.length > nbtns)
+					{
+						console.log("remove");
+						toolbar.removeChild(toolbar.childNodes[nbtns]);
 					}
+				}
+
+				for (let i=0; i<this.nPinned; ++i) {
+					let j = Math.floor(i / nbtns);
+					let k = i % nbtns;
+					let toolbar = toolbox.childNodes[j];
+
+					let toolbarbtn;
+					if (toolbar.childNodes.length <= k) { // we added a new pinned tab(tabs)
+						toolbarbtn = aDOMWindow.document.createElement('toolbarbutton');
+						toolbarbtn.setAttribute('type', 'radio');
+						toolbarbtn.setAttribute('group', 'RadioGroup');
+						toolbarbtn.setAttribute('context', 'tabContextMenu');
+						toolbarbtn.setAttribute("data-position", i);
+						toolbar.appendChild(toolbarbtn);
+					}
+					else {
+						toolbarbtn = toolbar.childNodes[k]; // +1 for the arrow hbox
+					}
+
 					toolbarbtn.setAttribute('tooltiptext', g.tabs[i].label);
-					toolbarbtn.setAttribute('type', 'radio');
-					toolbarbtn.setAttribute('group', 'RadioGroup');
-					toolbarbtn.setAttribute('context', 'tabContextMenu');
 					toolbarbtn.checked = g.tabs[i].selected;
 					let image = aDOMWindow.document.getAnonymousNodes(toolbarbtn)[0]; // there are sites with at least 32px*32px images therefore buttons would have become huge
 					image.setAttribute('height', '16px'); // we reduce such big images
@@ -1058,6 +1095,9 @@ var windowListener = {
 					}
 				}
 				g.mCurrentTab.pinned ? tree.view.selection.clearSelection() : tree.view.selection.select(g.mCurrentTab._tPos - tt.nPinned); // NEW
+
+				var toc = new Date().getTime();
+				//console.log(toc-tic+" ms");
 			}, // redrawToolbarbuttons: function()
 			
 			quickSearch: function(aText, tPos) {
@@ -1584,7 +1624,7 @@ var windowListener = {
 			}
 		}); // don't forget to restore
 
-		toolbar.addEventListener('dragstart', function(event) {
+		toolbox.addEventListener('dragstart', function(event) {
 			let toolbarbtn = event.target;
 			let tPos = Array.prototype.indexOf.call(toolbarbtn.parentNode.children, toolbarbtn);
 			let tab = g.tabs[tPos-1]; // the first child is the arrow hbox
@@ -1594,7 +1634,7 @@ var windowListener = {
 			event.stopPropagation();
 		}, false);
 
-		toolbar.addEventListener('dragover', function f(event) {
+		toolbox.addEventListener('dragover', function f(event) {
 			let dt = event.dataTransfer;
 			
 			if ( dt.mozTypesAt(0).contains(aDOMWindow.TAB_DROP_TYPE)
@@ -1603,7 +1643,7 @@ var windowListener = {
 				event.preventDefault();
 				event.stopPropagation();
 
-				let rect = toolbar.getBoundingClientRect();
+				let rect = toolbox.getBoundingClientRect();
 				let newMargin;
 
 				if (event.originalTarget.tagName == 'toolbarbutton' || event.originalTarget.tagName == 'toolbar') {
@@ -1614,7 +1654,7 @@ var windowListener = {
 							newMargin = event.originalTarget.getBoundingClientRect().right - rect.left;
 						}
 					} else { // == 'toolbar'
-						newMargin = toolbar.lastChild.getBoundingClientRect().right - rect.left; // there is always at least one child (<hbox> with <img> where the arrow is stored)
+						newMargin = toolbox.lastChild.getBoundingClientRect().right - rect.left; // there is always at least one child (<hbox> with <img> where the arrow is stored)
 					}
 					newMargin += ind.clientWidth / 2; // just copying what mozilla does
 					ind.collapsed = false;
@@ -1624,14 +1664,14 @@ var windowListener = {
 			}
 		}, false);
 
-		toolbar.addEventListener('dragleave', function f(event) {
+		toolbox.addEventListener('dragleave', function f(event) {
 			event.preventDefault();
 			event.stopPropagation();
 
 			ind.collapsed = true;
 		}, false);
 
-		toolbar.addEventListener('drop', function f(event) {
+		toolbox.addEventListener('drop', function f(event) {
 			let dt = event.dataTransfer;
 
 			if (dt.mozTypesAt(0).contains(aDOMWindow.TAB_DROP_TYPE)) {
@@ -1887,10 +1927,11 @@ var windowListener = {
 			tab.pinned ? tree.view.selection.clearSelection() : tree.view.selection.select(tab._tPos - tt.nPinned);
 			tt.redrawToolbarbuttons();
 		}), false); // don't forget to remove
-		
-		toolbar.addEventListener('command', function f(event) {
-			if (event.originalTarget.localName == 'toolbarbutton') {
-				let tPos = Array.prototype.indexOf.call(toolbar.childNodes, event.originalTarget) - 1; // -1 for the arrow hbox
+
+		toolbox.addEventListener('command', function f(event) {
+			if (event.originalTarget.localName === 'toolbarbutton') {
+				let tPos = event.originalTarget.getAttribute("data-position");
+				console.log(event.originalTarget.localName+" "+tPos);
 				g.selectTabAtIndex(tPos);
 			}
 		}, false);
